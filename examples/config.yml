@@ -1,0 +1,11 @@
+# Prometheus Exporter Plugin Configuration
+# This is an example configuration file showing all available options
+
+collector:
+  jvm: true
+  mc: true
+  mc_entities: true
+
+web:
+  listen_address: "0.0.0.0"
+  listen_port: 19565
