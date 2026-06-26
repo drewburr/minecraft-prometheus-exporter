@@ -26,7 +26,7 @@ public final class Dimensions {
 		} else if (dim.equals(Level.NETHER)) {
 			return DimensionIds.THE_NETHER;
 		} else {
-			return DimensionIds.customId(dim.location().getPath());
+			return DimensionIds.customId(dim.identifier().getPath());
 		}
 	}
 
@@ -34,6 +34,6 @@ public final class Dimensions {
 	 * The dimension name.
 	 */
 	public static String name(ResourceKey<Level> dim) {
-		return dim.location().getPath();
+		return dim.identifier().getPath();
 	}
 }

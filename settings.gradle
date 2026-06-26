@@ -28,4 +28,4 @@ include 'paper'
 // See DEVELOPMENT.md.
 // include 'mod:fabric'
 // include 'mod:forge'
-// include 'mod:neoforge'
+include 'mod:neoforge'

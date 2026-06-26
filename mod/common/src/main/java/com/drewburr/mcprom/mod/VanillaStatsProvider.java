@@ -41,7 +41,7 @@ public class VanillaStatsProvider implements ServerStatsProvider {
 		List<PlayerInfo> players = new ArrayList<>();
 		for (ServerPlayer player : this.server.getPlayerList().getPlayers()) {
 			GameProfile profile = player.getGameProfile();
-			players.add(new PlayerInfo(profile.getId().toString(), profile.getName()));
+			players.add(new PlayerInfo(profile.id().toString(), profile.name()));
 		}
 		return players;
 	}
