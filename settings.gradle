@@ -16,8 +16,12 @@ rootProject.name = 'minecraft-prometheus-exporter'
 
 include 'core'
 include 'paper'
-// Mod loader modules are added as each is built out:
-// include 'mod:common'
+// Mod loaders share the Mojang-mapped sources in mod/common via a source
+// directory (not a standalone project), each producing its own loader jar.
+// Mod loaders are scaffolded but disabled: the Loom toolchain (both Fabric
+// Loom and Architectury Loom) bundles Gson 2.9.1, which cannot parse the
+// Minecraft 26.2 metadata. Re-enable once Loom ships a Gson >= 2.10 build, or
+// switch to NeoForge's ModDevGradle. See DEVELOPMENT.md.
 // include 'mod:fabric'
 // include 'mod:forge'
 // include 'mod:neoforge'
