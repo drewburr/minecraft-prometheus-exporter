@@ -181,6 +181,27 @@ Group and base package were rebranded from
 part of taking over maintenance. Metric names (`mc_*`) are intentionally
 unchanged for dashboard compatibility.
 
+## Mod loader status (MC 26.x tooling)
+
+Paper + core build and ship today. The mod loaders are scaffolded
+(`mod/common` shared sources + a Fabric module) but **disabled in
+`settings.gradle`** pending upstream tooling for the new 26.x version scheme:
+
+- **Gson/Java 25 (solved):** Loom crashed on Java 25 because the old
+  `foojay-resolver-convention 0.7.0` plugin dragged Gson 2.9.1 onto the plugin
+  classpath, and Gson 2.9.1 cannot write `final` fields on JDK 18+ (the legacy
+  reflection accessors were removed in JDK 23). Upgrading foojay to `1.0.0`
+  resolves Gson to ≥2.13 and Loom runs fine on Java 25.
+- **Mappings (blocked upstream):** `loom.officialMojangMappings()` fails for any
+  26.x version — Mojang's 26.x manifests publish no `client_mappings`, and
+  Fabric intermediary/yarn top out at `1.21.11`. Until Fabric publishes 26.x
+  intermediary, Fabric Loom cannot deobfuscate 26.2.
+- **Path forward:** NeoForge (and Forge) build via NeoForge's **ModDevGradle**
+  (`net.neoforged.moddev`), which has its own mapping pipeline and does not
+  depend on Fabric intermediary or piston-meta mappings. The shared-source
+  design means each loader can use its own official tooling. Fabric re-enables
+  once its 26.x mappings land.
+
 ## Conventions
 
 - Target **one Minecraft version per platform** for now (currently 1.21.1).
