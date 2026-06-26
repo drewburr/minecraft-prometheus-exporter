@@ -93,6 +93,13 @@ public class MinecraftCollector extends Collector implements Collector.Describab
 			.labelNames("id", "name")
 			.help("Stats on dimension tick times.")
 			.create();
+
+		// Initialize cache with empty metrics
+		this.cached_player_list = newPlayerListMetric();
+		this.cached_dim_chunks_loaded = newDimensionChunksLoadedMetric();
+		if (config.collector_mc_entities) {
+			this.cached_entities = newEntitiesTotalMetric();
+		}
 	}
 
 	/**

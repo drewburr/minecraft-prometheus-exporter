@@ -15,7 +15,7 @@ plugins {
 rootProject.name = 'minecraft-prometheus-exporter'
 
 include 'core'
-// include 'paper'
+include 'paper'
 // Mod loader modules are added as each is built out:
 // include 'mod:common'
 // include 'mod:fabric'
