@@ -26,6 +26,11 @@ include 'paper'
 // mappings for 26.x, so Loom cannot deobfuscate 26.2. Re-enable once Fabric
 // ships 26.x intermediary. NeoForge/Forge can use ModDevGradle instead.
 // See DEVELOPMENT.md.
+// Fabric and Forge are scaffolded but disabled pending upstream tooling for
+// the 26.x scheme (see DEVELOPMENT.md):
+//  - Fabric: no 26.x intermediary/yarn or Mojang mappings published yet.
+//  - Forge:  Forge 26.x dropped SRG (Mojmap runtime), but ModDevGradle's
+//            legacy-forge variant still expects SRG (intermediaryToNamedMapping).
 // include 'mod:fabric'
 // include 'mod:forge'
 include 'mod:neoforge'

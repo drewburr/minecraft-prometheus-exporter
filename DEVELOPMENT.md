@@ -196,11 +196,23 @@ Paper + core build and ship today. The mod loaders are scaffolded
   26.x version — Mojang's 26.x manifests publish no `client_mappings`, and
   Fabric intermediary/yarn top out at `1.21.11`. Until Fabric publishes 26.x
   intermediary, Fabric Loom cannot deobfuscate 26.2.
-- **Path forward:** NeoForge (and Forge) build via NeoForge's **ModDevGradle**
-  (`net.neoforged.moddev`), which has its own mapping pipeline and does not
-  depend on Fabric intermediary or piston-meta mappings. The shared-source
-  design means each loader can use its own official tooling. Fabric re-enables
-  once its 26.x mappings land.
+- **NeoForge (working):** builds via NeoForge's **ModDevGradle**
+  (`net.neoforged.moddev`), which has its own mapping pipeline and doesn't
+  depend on Fabric intermediary or piston-meta mappings. This is the one loader
+  green today.
+- **Forge (blocked upstream):** Forge 26.x dropped SRG and runs Mojang-mapped
+  like NeoForge, but ModDevGradle's legacy-forge variant
+  (`net.neoforged.moddev.legacyforge` 2.0.141) still expects an SRG
+  `intermediaryToNamedMapping` result and fails on 26.x. The module is
+  scaffolded and re-enables once MDG supports SRG-less Forge.
+- **JDK requirement:** NeoForm recompiles Minecraft, so a full **JDK 25 with
+  `javac`** must be available to the toolchain (a JRE is not enough).
+
+### 26.2 API notes
+Minecraft 26.x ships **deobfuscated** (Mojang publishes no obfuscation mappings;
+the jar already has real names). Notable renames vs the 1.21.x era, handled in
+`mod/common`: `ResourceLocation` → `Identifier`, `ResourceKey.location()` →
+`identifier()`, and `GameProfile` is now a record (`id()`/`name()`).
 
 ## Conventions
 
