@@ -1,0 +1,30 @@
+# Build verification for the modules that build today (Paper + NeoForge) plus
+# the platform-agnostic core's unit tests. Fabric and Forge are disabled in
+# settings.gradle pending upstream 26.x tooling (see DEVELOPMENT.md).
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Test core
+        run: ./gradlew :core:test --no-daemon
+
+      - name: Build Paper
+        run: ./gradlew :paper:build --no-daemon
+
+      - name: Build NeoForge
+        run: ./gradlew :mod:neoforge:build --no-daemon
