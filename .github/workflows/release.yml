@@ -1,19 +1,19 @@
-# Per-platform release workflow.
+# Version-driven releases.
 #
-# Each platform is released independently by pushing a namespaced tag:
-#   paper/v1.3.0      neoforge/v1.3.0      fabric/v1.2.0      forge/v1.2.0
+# The version in each module's gradle.properties is the source of truth. On a
+# push to master, each buildable platform is checked: if no release exists yet
+# for that platform's current version, its jar is built and published (the
+# release also creates the git tag, e.g. paper/v1.3.0). Bumping a version and
+# merging is all it takes to ship — no manual tagging.
 #
-# The tag prefix selects which Gradle module to build and which jar to attach,
-# so releasing Paper does not rebuild or re-release the mods.
+# Add fabric/forge to the matrix once their modules are re-enabled in
+# settings.gradle.
 name: release
 
 on:
   push:
-    tags:
-      - 'paper/v*'
-      - 'fabric/v*'
-      - 'forge/v*'
-      - 'neoforge/v*'
+    branches: [master]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -21,54 +21,61 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: paper
+            module: ':paper'
+            version_file: paper/gradle.properties
+            version_prop: paper_version
+            libdir: paper/build/libs
+          - platform: neoforge
+            module: ':mod:neoforge'
+            version_file: mod/neoforge/gradle.properties
+            version_prop: neoforge_version
+            libdir: mod/neoforge/build/libs
     steps:
       - uses: actions/checkout@v4
 
+      - name: Resolve version and tag
+        id: meta
+        run: |
+          version=$(grep -E "^${{ matrix.version_prop }}=" "${{ matrix.version_file }}" | cut -d= -f2)
+          tag="${{ matrix.platform }}/v${version}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Check for existing release
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view '${{ steps.meta.outputs.tag }}' >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release ${{ steps.meta.outputs.tag }} already exists; skipping."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up JDK 25
+        if: steps.check.outputs.exists == 'false'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '25'
 
-      - name: Resolve platform from tag
-        id: platform
-        run: |
-          ref='${{ github.ref_name }}'           # e.g. paper/v1.3.0
-          platform="${ref%%/*}"                  # paper
-          version="${ref##*/v}"                  # 1.3.0
-          case "$platform" in
-            paper)    module=':paper';        version_prop='paper_version';    libdir='paper/build/libs' ;;
-            fabric)   module=':mod:fabric';   version_prop='fabric_version';   libdir='mod/fabric/build/libs' ;;
-            forge)    module=':mod:forge';    version_prop='forge_version';    libdir='mod/forge/build/libs' ;;
-            neoforge) module=':mod:neoforge'; version_prop='neoforge_version'; libdir='mod/neoforge/build/libs' ;;
-            *) echo "Unknown platform: $platform" >&2; exit 1 ;;
-          esac
-          {
-            echo "platform=$platform"
-            echo "version=$version"
-            echo "module=$module"
-            echo "version_prop=$version_prop"
-            echo "libdir=$libdir"
-          } >> "$GITHUB_OUTPUT"
+      - name: Build ${{ matrix.platform }}
+        if: steps.check.outputs.exists == 'false'
+        run: ./gradlew ${{ matrix.module }}:build --no-daemon
 
-      - name: Verify tag matches module version
-        run: |
-          declared=$(grep -E "^${{ steps.platform.outputs.version_prop }}=" \
-            $(echo "${{ steps.platform.outputs.module }}" | tr ':' '/' | sed 's#^/##')/gradle.properties \
-            | cut -d= -f2)
-          if [ "$declared" != "${{ steps.platform.outputs.version }}" ]; then
-            echo "Tag version ${{ steps.platform.outputs.version }} != module version $declared" >&2
-            exit 1
-          fi
-
-      - name: Build ${{ steps.platform.outputs.platform }}
-        run: ./gradlew ${{ steps.platform.outputs.module }}:build --no-daemon
-
-      - name: Create GitHub release
+      - name: Publish release ${{ steps.meta.outputs.tag }}
+        if: steps.check.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          jar=$(ls ${{ steps.platform.outputs.libdir }}/*.jar | grep -vE 'sources|dev-shadow' | head -1)
-          gh release create '${{ github.ref_name }}' "$jar" \
-            --title '${{ steps.platform.outputs.platform }} ${{ steps.platform.outputs.version }}' \
+          jar=$(ls ${{ matrix.libdir }}/*.jar | grep -vE 'sources|dev-shadow' | head -1)
+          gh release create '${{ steps.meta.outputs.tag }}' "$jar" \
+            --target '${{ github.sha }}' \
+            --title '${{ matrix.platform }} ${{ steps.meta.outputs.version }}' \
             --generate-notes

@@ -145,13 +145,16 @@ dependency versions are defined once in the root `build.gradle`.
   (Java toolchain, `prometheus_version`, group/package).
 - Bumping `core` does **not** force a public release — only the platform module
   that ships changed code gets re-released.
-- **Git tags are namespaced per platform**:
-  `paper/v1.3.0`, `fabric/v1.2.0`, `forge/v1.2.0`, `neoforge/v1.2.0`.
-- A single GitHub Actions workflow triggers on
-  `['paper/v*', 'fabric/v*', 'forge/v*', 'neoforge/v*']`, parses the tag prefix
-  to select the Gradle module, runs `./gradlew :<module>:build`, and attaches
-  only that platform's jar to the release. A CI guard fails the build if the tag
-  version does not match the module's `gradle.properties` version.
+- **The version file is the source of truth.** Releases are version-driven, not
+  tag-driven: on a push to `master`, `.github/workflows/release.yml` reads each
+  buildable platform's version from its `gradle.properties`, and if no release
+  exists yet for that version it builds the module and publishes a release
+  (which also creates the namespaced git tag, e.g. `paper/v1.3.0`). Already-
+  released versions are skipped, so unrelated pushes are no-ops.
+- To ship a platform: bump its `*_version` and merge. To ship several, bump
+  several. No manual tagging.
+- The release matrix currently covers the buildable platforms (`paper`,
+  `neoforge`); add `fabric`/`forge` to it when their modules are re-enabled.
 
 ## Building & verifying
 
