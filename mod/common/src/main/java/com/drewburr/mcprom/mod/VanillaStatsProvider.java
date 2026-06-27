@@ -66,11 +66,6 @@ public class VanillaStatsProvider implements ServerStatsProvider {
 		return true;
 	}
 
-	@Override
-	public double getApproximateTickSeconds() {
-		return 0.0;
-	}
-
 	/**
 	 * Count entities by type in a level, merging items under {@code "Item"} and
 	 * excluding players.

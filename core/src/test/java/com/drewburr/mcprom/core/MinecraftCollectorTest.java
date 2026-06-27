@@ -27,12 +27,10 @@ class MinecraftCollectorTest {
 		List<PlayerInfo> players = List.of();
 		List<DimensionStats> dimensions = List.of();
 		boolean dimTickEvents = false;
-		double approxTick = 0.05;
 
 		@Override public List<PlayerInfo> getOnlinePlayers() { return this.players; }
 		@Override public List<DimensionStats> getDimensionStats(boolean withEntities) { return this.dimensions; }
 		@Override public boolean supportsDimensionTickEvents() { return this.dimTickEvents; }
-		@Override public double getApproximateTickSeconds() { return this.approxTick; }
 	}
 
 	private static Map<String, MetricFamilySamples> byName(List<MetricFamilySamples> samples) {
@@ -88,21 +86,26 @@ class MinecraftCollectorTest {
 	}
 
 	@Test
-	void approximatesDimensionTicksWhenEventsUnsupported() {
+	void dimensionTickReportedAsServerWhenEventsUnsupported() {
+		// Paper-style provider: per-world tick timing can't be measured, so the
+		// dimension metric carries a single "server" series with the real tick
+		// time, not fabricated per-world values.
 		FakeProvider provider = new FakeProvider();
 		provider.dimTickEvents = false;
-		provider.approxTick = 0.05;
-		provider.dimensions = List.of(new DimensionStats(0, "overworld", 1, List.of()));
 
 		MinecraftCollector collector = new MinecraftCollector(new ExporterConfig(), provider);
-		collector.updateCache();
+		collector.observeServerTick(0.05);
 
 		MetricFamilySamples dimTicks = byName(collector.collect()).get("mc_dimension_tick_seconds");
 		assertNotNull(dimTicks);
-		// The histogram count sample for the overworld should reflect one observation.
+		List<String> names = dimTicks.samples.stream()
+			.filter(s -> s.name.equals("mc_dimension_tick_seconds_count"))
+			.map(s -> s.labelValues.get(1))
+			.toList();
+		assertEquals(List.of("server"), names);
 		assertTrue(dimTicks.samples.stream().anyMatch(s ->
 			s.name.equals("mc_dimension_tick_seconds_count")
-				&& s.labelValues.equals(List.of("0", "overworld"))
+				&& s.labelValues.equals(List.of("0", "server"))
 				&& s.value == 1.0));
 	}
 
@@ -135,6 +138,22 @@ class MinecraftCollectorTest {
 			s.name.equals("mc_server_tick_seconds_count") && s.value == 2.0));
 		assertTrue(ticks.samples.stream().anyMatch(s ->
 			s.name.equals("mc_server_tick_seconds_sum") && Math.abs(s.value - 0.10) < 1e-9));
+	}
+
+	@Test
+	void observeServerTickAlsoRecordsRate() {
+		MinecraftCollector collector = new MinecraftCollector(new ExporterConfig(), new FakeProvider());
+		collector.observeServerTick(0.05);  // 50ms tick -> 20 TPS
+		collector.observeServerTick(0.10);  // 100ms tick -> 10 TPS
+
+		Map<String, MetricFamilySamples> metrics = byName(collector.collect());
+		MetricFamilySamples rate = metrics.get("mc_server_tick_rate");
+		assertNotNull(rate);
+		assertTrue(rate.samples.stream().anyMatch(s ->
+			s.name.equals("mc_server_tick_rate_count") && s.value == 2.0));
+		// 20 + 10 = 30 TPS observed total.
+		assertTrue(rate.samples.stream().anyMatch(s ->
+			s.name.equals("mc_server_tick_rate_sum") && Math.abs(s.value - 30.0) < 1e-9));
 	}
 
 	@Test

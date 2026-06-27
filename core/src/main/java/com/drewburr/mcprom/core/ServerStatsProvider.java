@@ -37,19 +37,10 @@ public interface ServerStatsProvider {
 	/**
 	 * Whether this platform delivers real per-dimension tick events (driving the
 	 * collector's {@code start/stopDimensionTick} hooks). When false, the
-	 * collector approximates dimension tick time from
-	 * {@link #getApproximateTickSeconds()}.
+	 * collector does not emit per-dimension tick metrics at all, since the
+	 * platform (e.g. Paper) cannot measure per-world tick timing.
 	 *
 	 * @return True if per-dimension tick events are available.
 	 */
 	boolean supportsDimensionTickEvents();
-
-	/**
-	 * An approximate per-tick duration in seconds, used as a fallback when
-	 * {@link #supportsDimensionTickEvents()} is false (e.g. Paper derives this
-	 * from TPS). Applied uniformly to every dimension.
-	 *
-	 * @return The approximate tick duration in seconds.
-	 */
-	double getApproximateTickSeconds();
 }

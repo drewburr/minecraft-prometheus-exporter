@@ -24,16 +24,47 @@ public class MinecraftCollector extends Collector implements Collector.Describab
 	private static final Logger LOG = Logger.getLogger(MinecraftCollector.class.getName());
 
 	/**
-	 * The histogram buckets to use for ticks.
+	 * Histogram buckets (seconds) for tick durations. A healthy server ticks at
+	 * ~50ms (20 TPS), so the buckets are dense around 0.05 to give real
+	 * resolution there, with coarser buckets above to capture lag.
 	 */
 	private static final double[] TICK_BUCKETS = new double[] {
+		0.005,
 		0.01,
-		0.025,
+		0.02,
+		0.03,
+		0.04,
+		0.045,
 		0.05,
+		0.055,
+		0.06,
+		0.07,
+		0.08,
 		0.10,
-		0.25,
-		0.5,
+		0.15,
+		0.20,
+		0.30,
+		0.50,
 		1.0,
+	};
+
+	/**
+	 * Histogram buckets (ticks per second) for tick rate. A healthy server runs
+	 * at 20 TPS, so the buckets are dense near 20 to show small dips and coarser
+	 * below to capture serious lag.
+	 */
+	private static final double[] RATE_BUCKETS = new double[] {
+		2.0,
+		5.0,
+		8.0,
+		10.0,
+		12.0,
+		14.0,
+		16.0,
+		18.0,
+		19.0,
+		19.5,
+		20.0,
 	};
 
 	/**
@@ -57,6 +88,11 @@ public class MinecraftCollector extends Collector implements Collector.Describab
 	private final Histogram server_tick_seconds;
 
 	/**
+	 * Histogram metrics for server tick rate (ticks per second).
+	 */
+	private final Histogram server_tick_rate;
+
+	/**
 	 * The active timer when timing a server tick.
 	 */
 	private Histogram.Timer server_tick_timer;
@@ -76,12 +112,6 @@ public class MinecraftCollector extends Collector implements Collector.Describab
 	private volatile MetricFamilySamples cached_entities;
 
 	/**
-	 * The last dimension snapshot, used to approximate per-dimension tick timing
-	 * on platforms that lack real tick events.
-	 */
-	private volatile List<DimensionStats> cached_dimensions = Collections.emptyList();
-
-	/**
 	 * Constructs the instance.
 	 *
 	 * @param config The exporter configuration.
@@ -95,6 +125,12 @@ public class MinecraftCollector extends Collector implements Collector.Describab
 			.buckets(TICK_BUCKETS)
 			.name("mc_server_tick_seconds")
 			.help("Stats on server tick times.")
+			.create();
+
+		this.server_tick_rate = Histogram.build()
+			.buckets(RATE_BUCKETS)
+			.name("mc_server_tick_rate")
+			.help("Stats on server tick rate (ticks per second).")
 			.create();
 
 		this.dim_tick_seconds = Histogram.build()
@@ -118,7 +154,6 @@ public class MinecraftCollector extends Collector implements Collector.Describab
 	public void updateCache() {
 		try {
 			List<DimensionStats> dimensions = this.stats.getDimensionStats(this.config.collector_mc_entities);
-			this.cached_dimensions = dimensions;
 			this.cached_player_list = this.collectPlayerList();
 			this.cached_dim_chunks_loaded = this.collectDimensionChunksLoaded(dimensions);
 			this.cached_entities = this.config.collector_mc_entities
@@ -143,6 +178,7 @@ public class MinecraftCollector extends Collector implements Collector.Describab
 			MetricFamilySamples entities = this.cached_entities;
 
 			List<MetricFamilySamples> server_ticks = this.server_tick_seconds.collect();
+			List<MetricFamilySamples> server_tick_rates = this.server_tick_rate.collect();
 			List<MetricFamilySamples> dim_ticks = this.collectDimensionTicks();
 
 			ArrayList<MetricFamilySamples> metrics = new ArrayList<>();
@@ -153,6 +189,7 @@ public class MinecraftCollector extends Collector implements Collector.Describab
 				metrics.add(entities);
 			}
 			metrics.addAll(server_ticks);
+			metrics.addAll(server_tick_rates);
 			if (dim_chunks_loaded != null) {
 				metrics.add(dim_chunks_loaded);
 			}
@@ -183,12 +220,8 @@ public class MinecraftCollector extends Collector implements Collector.Describab
 	 * provider's approximate tick time is applied to every known dimension.</p>
 	 */
 	private List<MetricFamilySamples> collectDimensionTicks() {
-		if (!this.stats.supportsDimensionTickEvents()) {
-			double tick_seconds = this.stats.getApproximateTickSeconds();
-			for (DimensionStats dim : this.cached_dimensions) {
-				this.dim_tick_seconds.labels(Integer.toString(dim.id()), dim.name()).observe(tick_seconds);
-			}
-		}
+		// On the mod loaders this holds per-world series (driven by per-level tick
+		// events); on Paper it holds a single "server" series (see observeServerTick).
 		return this.dim_tick_seconds.collect();
 	}
 
@@ -230,6 +263,7 @@ public class MinecraftCollector extends Collector implements Collector.Describab
 			descs.add(newEntitiesTotalMetric());
 		}
 		descs.addAll(this.server_tick_seconds.describe());
+		descs.addAll(this.server_tick_rate.describe());
 		descs.add(newDimensionChunksLoadedMetric());
 		descs.addAll(this.dim_tick_seconds.describe());
 		return descs;
@@ -269,6 +303,26 @@ public class MinecraftCollector extends Collector implements Collector.Describab
 	 */
 	public void observeServerTick(double seconds) {
 		this.server_tick_seconds.observe(seconds);
+		this.observeServerTickRate(seconds);
+		// On platforms without per-world tick events (e.g. Paper), every world
+		// ticks together as one unit on one thread. Expose that as a single
+		// "server" dimension series carrying the real tick time, rather than
+		// fabricating identical per-world values.
+		if (!this.stats.supportsDimensionTickEvents()) {
+			this.dim_tick_seconds.labels("0", "server").observe(seconds);
+		}
+	}
+
+	/**
+	 * Record the tick rate implied by a tick duration. Rate is {@code 1/seconds}
+	 * capped at 20 TPS (a server cannot tick faster than that); a non-positive
+	 * duration is treated as full speed.
+	 *
+	 * @param seconds The observed tick duration in seconds.
+	 */
+	private void observeServerTickRate(double seconds) {
+		double tps = seconds > 0.0 ? Math.min(20.0, 1.0 / seconds) : 20.0;
+		this.server_tick_rate.observe(tps);
 	}
 
 	/**
@@ -289,7 +343,8 @@ public class MinecraftCollector extends Collector implements Collector.Describab
 		if (this.server_tick_timer == null) {
 			return;
 		}
-		this.server_tick_timer.observeDuration();
+		double seconds = this.server_tick_timer.observeDuration();
+		this.observeServerTickRate(seconds);
 		this.server_tick_timer = null;
 	}
 
