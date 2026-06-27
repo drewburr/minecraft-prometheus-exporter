@@ -260,6 +260,18 @@ public class MinecraftCollector extends Collector implements Collector.Describab
 	}
 
 	/**
+	 * Record a server tick duration directly, in seconds. Used by platforms that
+	 * measure tick timing themselves (e.g. Paper, via the inter-tick interval)
+	 * rather than through the {@link #startServerTick()}/{@link #stopServerTick()}
+	 * hooks.
+	 *
+	 * @param seconds The observed tick duration in seconds.
+	 */
+	public void observeServerTick(double seconds) {
+		this.server_tick_seconds.observe(seconds);
+	}
+
+	/**
 	 * Record when a server tick begins.
 	 */
 	public void startServerTick() {

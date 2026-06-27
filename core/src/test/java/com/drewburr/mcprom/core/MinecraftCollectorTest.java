@@ -124,6 +124,20 @@ class MinecraftCollectorTest {
 	}
 
 	@Test
+	void observeServerTickRecordsDuration() {
+		MinecraftCollector collector = new MinecraftCollector(new ExporterConfig(), new FakeProvider());
+		collector.observeServerTick(0.05);
+		collector.observeServerTick(0.05);
+
+		MetricFamilySamples ticks = byName(collector.collect()).get("mc_server_tick_seconds");
+		assertNotNull(ticks);
+		assertTrue(ticks.samples.stream().anyMatch(s ->
+			s.name.equals("mc_server_tick_seconds_count") && s.value == 2.0));
+		assertTrue(ticks.samples.stream().anyMatch(s ->
+			s.name.equals("mc_server_tick_seconds_sum") && Math.abs(s.value - 0.10) < 1e-9));
+	}
+
+	@Test
 	void strictPolicyThrowsOnUnbalancedTick() {
 		ExporterConfig config = new ExporterConfig();
 		config.collector_mc_dimension_tick_errors = TickErrorPolicy.STRICT;

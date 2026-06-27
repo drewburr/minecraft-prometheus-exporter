@@ -6,7 +6,6 @@ import com.drewburr.mcprom.core.ExporterConfig;
 import com.drewburr.mcprom.core.HttpExporterServer;
 import com.drewburr.mcprom.core.MinecraftCollector;
 
-import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -67,12 +66,20 @@ public class PrometheusExporterPlugin extends JavaPlugin {
 			return;
 		}
 
-		// Time each server tick: start now, stop on the next scheduler pass.
+		// Measure server tick time as the interval between consecutive ticks.
+		// Paper exposes no tick start/end event, so we time how long each tick
+		// actually takes by the gap between this once-per-tick task's runs
+		// (~50ms at 20 TPS, growing when the server lags).
 		new BukkitRunnable() {
+			private long lastNanos = 0L;
+
 			@Override
 			public void run() {
-				collector.startServerTick();
-				Bukkit.getScheduler().runTask(PrometheusExporterPlugin.this, collector::stopServerTick);
+				long now = System.nanoTime();
+				if (this.lastNanos != 0L) {
+					collector.observeServerTick((now - this.lastNanos) / 1_000_000_000.0);
+				}
+				this.lastNanos = now;
 			}
 		}.runTaskTimer(this, 0L, 1L);
 
