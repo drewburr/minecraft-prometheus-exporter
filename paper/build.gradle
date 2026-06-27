@@ -1,0 +1,80 @@
+// The PaperMC plugin. Bundles core + the relocated Prometheus client into a
+// single plugin jar via Shadow.
+
+plugins {
+	id 'java'
+	id 'com.gradleup.shadow' version '9.0.0'
+}
+
+group = mod_group_id
+version = paper_version
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(java_version as int)
+
+configurations {
+	// Dependencies that are both compile-time and bundled (shadowed) into the
+	// final jar.
+	bundle
+	compileOnly.extendsFrom bundle
+	shadow.extendsFrom bundle
+}
+
+repositories {
+	mavenCentral()
+	maven {
+		name = 'papermc'
+		url = 'https://repo.papermc.io/repository/maven-public/'
+	}
+}
+
+dependencies {
+	compileOnly "io.papermc.paper:paper-api:${paper_api_version}"
+
+	// core is bundled into the plugin jar (see shadowJar below).
+	implementation project(':core')
+
+	// Prometheus client — bundled and relocated.
+	bundle "io.prometheus:simpleclient:${prometheus_version}"
+	bundle "io.prometheus:simpleclient_httpserver:${prometheus_version}"
+	bundle "io.prometheus:simpleclient_hotspot:${prometheus_version}"
+}
+
+// Expand variables in plugin.yml.
+tasks.named('processResources') {
+	def replaceProperties = [
+		minecraft_version: minecraft_version,
+		mod_authors      : mod_authors,
+		mod_description  : mod_description,
+		mod_id           : mod_id,
+		mod_name         : mod_name,
+		mod_url          : mod_url,
+		version          : version,
+	]
+	inputs.properties replaceProperties
+	filesMatching('plugin.yml') {
+		expand replaceProperties
+	}
+}
+
+tasks.named('shadowJar') {
+	archiveClassifier = ''
+	archiveBaseName = 'prometheus-exporter-paper'
+
+	// Bundle the explicitly-marked deps plus core's compiled output.
+	configurations = [project.configurations.shadow]
+	from project(':core').sourceSets.main.output
+
+	// Relocate the Prometheus client so we never collide with another plugin.
+	relocate 'io.prometheus', "${relocateBase}.io.prometheus"
+
+	minimize {
+		// Keep the HTTP server and hotspot exports; they are loaded reflectively
+		// and would otherwise be stripped.
+		exclude dependency("io.prometheus:simpleclient_httpserver:.*")
+		exclude dependency("io.prometheus:simpleclient_hotspot:.*")
+	}
+}
+
+tasks.named('build') {
+	dependsOn tasks.named('shadowJar')
+}

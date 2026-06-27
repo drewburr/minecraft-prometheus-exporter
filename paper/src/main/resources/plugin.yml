@@ -1,0 +1,12 @@
+name: PrometheusExporter
+version: ${version}
+main: com.drewburr.mcprom.paper.PrometheusExporterPlugin
+# Highest api-version Paper currently accepts (26.2 is alpha and not yet a valid
+# value). This is a minimum-API hint and works on a 26.2 server.
+api-version: '26.1.2'
+description: ${mod_description}
+author: ${mod_authors}
+website: ${mod_url}
+
+# Server-side only; no client-side installation required.
+load: STARTUP

@@ -1,0 +1,34 @@
+// Platform-agnostic core: Prometheus metrics, HTTP server, config schema, and
+// the ServerStatsProvider seam. Pure Java — NO Minecraft or Bukkit on the
+// classpath, so it compiles identically under any loader/mapping set.
+
+plugins {
+	id 'java'
+	id 'java-library'
+}
+
+group = mod_group_id
+version = core_version
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(java_version as int)
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	// Prometheus client is part of core's public API (the collector extends it),
+	// so expose it via `api`. Platform modules shade + relocate it into the final
+	// jar; here it is a normal compile/runtime dependency.
+	api "io.prometheus:simpleclient:${prometheus_version}"
+	api "io.prometheus:simpleclient_httpserver:${prometheus_version}"
+	api "io.prometheus:simpleclient_hotspot:${prometheus_version}"
+
+	testImplementation platform('org.junit:junit-bom:5.10.2')
+	testImplementation 'org.junit.jupiter:junit-jupiter'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
