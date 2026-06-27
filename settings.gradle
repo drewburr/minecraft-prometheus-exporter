@@ -1,9 +1,36 @@
 pluginManagement {
 	repositories {
 		gradlePluginPortal()
+		maven { url = 'https://maven.fabricmc.net/' }
+		maven { url = 'https://maven.architectury.dev/' }
+		maven { url = 'https://maven.minecraftforge.net/' }
+		maven { url = 'https://maven.neoforged.net/releases/' }
 	}
 }
 
 plugins {
-	id 'org.gradle.toolchains.foojay-resolver-convention' version '0.7.0'
+	id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
 }
+
+rootProject.name = 'minecraft-prometheus-exporter'
+
+include 'core'
+include 'paper'
+// Mod loaders share the Mojang-mapped sources in mod/common via a source
+// directory (not a standalone project), each producing its own loader jar.
+//
+// Loom now runs on Java 25 (the foojay plugin upgrade above fixed the Gson
+// final-field crash). The Fabric module is still disabled because the Fabric
+// mapping pipeline has not reached the 26.x version scheme yet: Fabric
+// intermediary/yarn top out at 1.21.11 and Mojang publishes no official
+// mappings for 26.x, so Loom cannot deobfuscate 26.2. Re-enable once Fabric
+// ships 26.x intermediary. NeoForge/Forge can use ModDevGradle instead.
+// See DEVELOPMENT.md.
+// Fabric and Forge are scaffolded but disabled pending upstream tooling for
+// the 26.x scheme (see DEVELOPMENT.md):
+//  - Fabric: no 26.x intermediary/yarn or Mojang mappings published yet.
+//  - Forge:  Forge 26.x dropped SRG (Mojmap runtime), but ModDevGradle's
+//            legacy-forge variant still expects SRG (intermediaryToNamedMapping).
+// include 'mod:fabric'
+// include 'mod:forge'
+include 'mod:neoforge'
