@@ -9,9 +9,15 @@ plugins {
 
 group = mod_group_id
 version = fabric_version
-base.archivesName = 'prometheus-exporter-fabric'
+base.archivesName = "${mod_archive_name}-fabric"
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(java_version as int)
+
+// The remapped jar is the published artifact (classifier ''); keep the thin jar
+// from colliding with it.
+tasks.named('jar') {
+	archiveClassifier = 'slim'
+}
 
 repositories {
 	mavenCentral()

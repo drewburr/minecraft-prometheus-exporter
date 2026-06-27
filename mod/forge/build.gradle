@@ -10,9 +10,15 @@ plugins {
 
 group = mod_group_id
 version = forge_version
-base.archivesName = 'prometheus-exporter-forge'
+base.archivesName = "${mod_archive_name}-forge"
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(java_version as int)
+
+// The shaded jar is the published artifact (classifier ''); keep the thin jar
+// from colliding with it.
+tasks.named('jar') {
+	archiveClassifier = 'slim'
+}
 
 repositories {
 	mavenCentral()

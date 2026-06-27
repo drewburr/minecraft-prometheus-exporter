@@ -8,8 +8,15 @@ plugins {
 
 group = mod_group_id
 version = paper_version
+base.archivesName = "${mod_archive_name}-paper"
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(java_version as int)
+
+// The shaded jar is the published artifact (classifier ''); keep the thin jar
+// from colliding with it (and from being mistaken for the real jar).
+tasks.named('jar') {
+	archiveClassifier = 'slim'
+}
 
 configurations {
 	// Dependencies that are both compile-time and bundled (shadowed) into the
@@ -58,7 +65,6 @@ tasks.named('processResources') {
 
 tasks.named('shadowJar') {
 	archiveClassifier = ''
-	archiveBaseName = 'prometheus-exporter-paper'
 
 	// Bundle the explicitly-marked deps plus core's compiled output.
 	configurations = [project.configurations.shadow]
