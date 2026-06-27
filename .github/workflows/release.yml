@@ -38,13 +38,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Resolve version and tag
+      - name: Resolve version, tag, jar and title
         id: meta
         run: |
           version=$(grep -E "^${{ matrix.version_prop }}=" "${{ matrix.version_file }}" | cut -d= -f2)
-          tag="${{ matrix.platform }}/v${version}"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          archive=$(grep -E '^mod_archive_name=' gradle.properties | cut -d= -f2)
+          mc=$(grep -E '^minecraft_version=' gradle.properties | cut -d= -f2)
+          {
+            echo "version=$version"
+            echo "tag=${{ matrix.platform }}/v${version}"
+            # The published artifact is the shaded jar: <archive>-<loader>-<version>.jar
+            echo "jar=${{ matrix.libdir }}/${archive}-${{ matrix.platform }}-${version}.jar"
+            echo "title=${version} - ${{ matrix.platform }} (${mc})"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Check for existing release
         id: check
@@ -74,8 +80,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          jar=$(ls ${{ matrix.libdir }}/*.jar | grep -vE 'sources|dev-shadow' | head -1)
-          gh release create '${{ steps.meta.outputs.tag }}' "$jar" \
+          gh release create '${{ steps.meta.outputs.tag }}' '${{ steps.meta.outputs.jar }}' \
             --target '${{ github.sha }}' \
-            --title '${{ matrix.platform }} ${{ steps.meta.outputs.version }}' \
+            --title '${{ steps.meta.outputs.title }}' \
             --generate-notes
