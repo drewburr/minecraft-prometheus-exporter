@@ -27,12 +27,10 @@ class MinecraftCollectorTest {
 		List<PlayerInfo> players = List.of();
 		List<DimensionStats> dimensions = List.of();
 		boolean dimTickEvents = false;
-		double approxTick = 0.05;
 
 		@Override public List<PlayerInfo> getOnlinePlayers() { return this.players; }
 		@Override public List<DimensionStats> getDimensionStats(boolean withEntities) { return this.dimensions; }
 		@Override public boolean supportsDimensionTickEvents() { return this.dimTickEvents; }
-		@Override public double getApproximateTickSeconds() { return this.approxTick; }
 	}
 
 	private static Map<String, MetricFamilySamples> byName(List<MetricFamilySamples> samples) {
@@ -88,22 +86,17 @@ class MinecraftCollectorTest {
 	}
 
 	@Test
-	void approximatesDimensionTicksWhenEventsUnsupported() {
+	void noDimensionTicksWhenEventsUnsupported() {
+		// Paper-style provider: per-world tick timing can't be measured, so the
+		// collector must not emit per-dimension tick metrics at all.
 		FakeProvider provider = new FakeProvider();
 		provider.dimTickEvents = false;
-		provider.approxTick = 0.05;
 		provider.dimensions = List.of(new DimensionStats(0, "overworld", 1, List.of()));
 
 		MinecraftCollector collector = new MinecraftCollector(new ExporterConfig(), provider);
 		collector.updateCache();
 
-		MetricFamilySamples dimTicks = byName(collector.collect()).get("mc_dimension_tick_seconds");
-		assertNotNull(dimTicks);
-		// The histogram count sample for the overworld should reflect one observation.
-		assertTrue(dimTicks.samples.stream().anyMatch(s ->
-			s.name.equals("mc_dimension_tick_seconds_count")
-				&& s.labelValues.equals(List.of("0", "overworld"))
-				&& s.value == 1.0));
+		assertNull(byName(collector.collect()).get("mc_dimension_tick_seconds"));
 	}
 
 	@Test

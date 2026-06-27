@@ -112,12 +112,6 @@ public class MinecraftCollector extends Collector implements Collector.Describab
 	private volatile MetricFamilySamples cached_entities;
 
 	/**
-	 * The last dimension snapshot, used to approximate per-dimension tick timing
-	 * on platforms that lack real tick events.
-	 */
-	private volatile List<DimensionStats> cached_dimensions = Collections.emptyList();
-
-	/**
 	 * Constructs the instance.
 	 *
 	 * @param config The exporter configuration.
@@ -160,7 +154,6 @@ public class MinecraftCollector extends Collector implements Collector.Describab
 	public void updateCache() {
 		try {
 			List<DimensionStats> dimensions = this.stats.getDimensionStats(this.config.collector_mc_entities);
-			this.cached_dimensions = dimensions;
 			this.cached_player_list = this.collectPlayerList();
 			this.cached_dim_chunks_loaded = this.collectDimensionChunksLoaded(dimensions);
 			this.cached_entities = this.config.collector_mc_entities
@@ -227,11 +220,12 @@ public class MinecraftCollector extends Collector implements Collector.Describab
 	 * provider's approximate tick time is applied to every known dimension.</p>
 	 */
 	private List<MetricFamilySamples> collectDimensionTicks() {
+		// Only emit per-dimension tick timing where it is genuinely measured (the
+		// mod loaders, via per-level tick events). Paper ticks every world on one
+		// thread at one rate and exposes no per-world timing, so we export nothing
+		// here rather than fabricate identical per-world values.
 		if (!this.stats.supportsDimensionTickEvents()) {
-			double tick_seconds = this.stats.getApproximateTickSeconds();
-			for (DimensionStats dim : this.cached_dimensions) {
-				this.dim_tick_seconds.labels(Integer.toString(dim.id()), dim.name()).observe(tick_seconds);
-			}
+			return Collections.emptyList();
 		}
 		return this.dim_tick_seconds.collect();
 	}
@@ -276,7 +270,9 @@ public class MinecraftCollector extends Collector implements Collector.Describab
 		descs.addAll(this.server_tick_seconds.describe());
 		descs.addAll(this.server_tick_rate.describe());
 		descs.add(newDimensionChunksLoadedMetric());
-		descs.addAll(this.dim_tick_seconds.describe());
+		if (this.stats.supportsDimensionTickEvents()) {
+			descs.addAll(this.dim_tick_seconds.describe());
+		}
 		return descs;
 	}
 
