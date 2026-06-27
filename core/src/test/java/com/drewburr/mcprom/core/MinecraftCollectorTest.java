@@ -138,6 +138,22 @@ class MinecraftCollectorTest {
 	}
 
 	@Test
+	void observeServerTickAlsoRecordsRate() {
+		MinecraftCollector collector = new MinecraftCollector(new ExporterConfig(), new FakeProvider());
+		collector.observeServerTick(0.05);  // 50ms tick -> 20 TPS
+		collector.observeServerTick(0.10);  // 100ms tick -> 10 TPS
+
+		Map<String, MetricFamilySamples> metrics = byName(collector.collect());
+		MetricFamilySamples rate = metrics.get("mc_server_tick_rate");
+		assertNotNull(rate);
+		assertTrue(rate.samples.stream().anyMatch(s ->
+			s.name.equals("mc_server_tick_rate_count") && s.value == 2.0));
+		// 20 + 10 = 30 TPS observed total.
+		assertTrue(rate.samples.stream().anyMatch(s ->
+			s.name.equals("mc_server_tick_rate_sum") && Math.abs(s.value - 30.0) < 1e-9));
+	}
+
+	@Test
 	void strictPolicyThrowsOnUnbalancedTick() {
 		ExporterConfig config = new ExporterConfig();
 		config.collector_mc_dimension_tick_errors = TickErrorPolicy.STRICT;
