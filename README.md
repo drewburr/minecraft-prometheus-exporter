@@ -78,10 +78,13 @@ wrapper.
 ./gradlew :mod:neoforge:build # mod/neoforge/build/libs/prometheus-exporter-neoforge-*.jar
 ```
 
-Each platform carries its own version (in its module's `gradle.properties`) and
-is released by pushing a namespaced tag — e.g. `paper/v1.3.0` or
-`neoforge/v1.3.0` — which triggers the [release workflow](.github/workflows/release.yml)
-to build and publish only that platform.
+Each platform carries its own version in its module's `gradle.properties`
+(`paper_version`, `neoforge_version`, …), and that file is the source of truth
+for releases. When a version bump lands on `master`, the
+[release workflow](.github/workflows/release.yml) builds that platform and
+publishes a release (tagged e.g. `paper/v1.3.0`) if one doesn't already exist —
+so shipping a Paper update is just bumping `paper_version` and merging, with no
+manual tagging and no effect on the other platforms.
 
 ## License
 
