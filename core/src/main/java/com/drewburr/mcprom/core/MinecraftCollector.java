@@ -220,13 +220,8 @@ public class MinecraftCollector extends Collector implements Collector.Describab
 	 * provider's approximate tick time is applied to every known dimension.</p>
 	 */
 	private List<MetricFamilySamples> collectDimensionTicks() {
-		// Only emit per-dimension tick timing where it is genuinely measured (the
-		// mod loaders, via per-level tick events). Paper ticks every world on one
-		// thread at one rate and exposes no per-world timing, so we export nothing
-		// here rather than fabricate identical per-world values.
-		if (!this.stats.supportsDimensionTickEvents()) {
-			return Collections.emptyList();
-		}
+		// On the mod loaders this holds per-world series (driven by per-level tick
+		// events); on Paper it holds a single "server" series (see observeServerTick).
 		return this.dim_tick_seconds.collect();
 	}
 
@@ -270,9 +265,7 @@ public class MinecraftCollector extends Collector implements Collector.Describab
 		descs.addAll(this.server_tick_seconds.describe());
 		descs.addAll(this.server_tick_rate.describe());
 		descs.add(newDimensionChunksLoadedMetric());
-		if (this.stats.supportsDimensionTickEvents()) {
-			descs.addAll(this.dim_tick_seconds.describe());
-		}
+		descs.addAll(this.dim_tick_seconds.describe());
 		return descs;
 	}
 
@@ -311,6 +304,13 @@ public class MinecraftCollector extends Collector implements Collector.Describab
 	public void observeServerTick(double seconds) {
 		this.server_tick_seconds.observe(seconds);
 		this.observeServerTickRate(seconds);
+		// On platforms without per-world tick events (e.g. Paper), every world
+		// ticks together as one unit on one thread. Expose that as a single
+		// "server" dimension series carrying the real tick time, rather than
+		// fabricating identical per-world values.
+		if (!this.stats.supportsDimensionTickEvents()) {
+			this.dim_tick_seconds.labels("0", "server").observe(seconds);
+		}
 	}
 
 	/**

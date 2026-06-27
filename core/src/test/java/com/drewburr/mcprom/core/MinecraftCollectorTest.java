@@ -86,17 +86,27 @@ class MinecraftCollectorTest {
 	}
 
 	@Test
-	void noDimensionTicksWhenEventsUnsupported() {
+	void dimensionTickReportedAsServerWhenEventsUnsupported() {
 		// Paper-style provider: per-world tick timing can't be measured, so the
-		// collector must not emit per-dimension tick metrics at all.
+		// dimension metric carries a single "server" series with the real tick
+		// time, not fabricated per-world values.
 		FakeProvider provider = new FakeProvider();
 		provider.dimTickEvents = false;
-		provider.dimensions = List.of(new DimensionStats(0, "overworld", 1, List.of()));
 
 		MinecraftCollector collector = new MinecraftCollector(new ExporterConfig(), provider);
-		collector.updateCache();
+		collector.observeServerTick(0.05);
 
-		assertNull(byName(collector.collect()).get("mc_dimension_tick_seconds"));
+		MetricFamilySamples dimTicks = byName(collector.collect()).get("mc_dimension_tick_seconds");
+		assertNotNull(dimTicks);
+		List<String> names = dimTicks.samples.stream()
+			.filter(s -> s.name.equals("mc_dimension_tick_seconds_count"))
+			.map(s -> s.labelValues.get(1))
+			.toList();
+		assertEquals(List.of("server"), names);
+		assertTrue(dimTicks.samples.stream().anyMatch(s ->
+			s.name.equals("mc_dimension_tick_seconds_count")
+				&& s.labelValues.equals(List.of("0", "server"))
+				&& s.value == 1.0));
 	}
 
 	@Test
