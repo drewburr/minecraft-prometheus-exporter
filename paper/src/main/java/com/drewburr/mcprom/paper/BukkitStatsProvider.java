@@ -65,10 +65,14 @@ public class BukkitStatsProvider implements ServerStatsProvider {
 
 	@Override
 	public double getApproximateTickSeconds() {
-		// TPS of 20 == 50ms == 0.05s per tick. Below 20 TPS, the tick exceeded
-		// 50ms. Clamp to 1s to match the largest histogram bucket.
+		// Seconds per tick = 1 / TPS (20 TPS -> 0.05s). Cap TPS at 20 since the
+		// server cannot tick faster than that, and clamp the result to 1s to match
+		// the largest histogram bucket (and guard against TPS <= 0 at startup).
 		double recentTps = this.server.getTPS()[0];
-		return Math.min(1.0, 1.0 / (recentTps / 20.0));
+		if (recentTps <= 0.0) {
+			return 1.0;
+		}
+		return Math.min(1.0, 1.0 / Math.min(20.0, recentTps));
 	}
 
 	/**
