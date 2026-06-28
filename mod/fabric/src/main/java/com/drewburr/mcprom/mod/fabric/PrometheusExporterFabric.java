@@ -37,16 +37,16 @@ public class PrometheusExporterFabric implements DedicatedServerModInitializer {
 			this.exporter.onServerTickEnd();
 		});
 
-		ServerTickEvents.START_WORLD_TICK.register(world -> {
+		ServerTickEvents.START_LEVEL_TICK.register(level -> {
 			MinecraftCollector collector = this.exporter.collector();
 			if (collector != null) {
-				collector.startDimensionTick(Dimensions.id(world.dimension()), Dimensions.name(world.dimension()));
+				collector.startDimensionTick(Dimensions.id(level.dimension()), Dimensions.name(level.dimension()));
 			}
 		});
-		ServerTickEvents.END_WORLD_TICK.register(world -> {
+		ServerTickEvents.END_LEVEL_TICK.register(level -> {
 			MinecraftCollector collector = this.exporter.collector();
 			if (collector != null) {
-				collector.stopDimensionTick(Dimensions.id(world.dimension()), Dimensions.name(world.dimension()));
+				collector.stopDimensionTick(Dimensions.id(level.dimension()), Dimensions.name(level.dimension()));
 			}
 		});
 	}

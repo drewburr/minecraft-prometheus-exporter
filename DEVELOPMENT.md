@@ -154,7 +154,7 @@ dependency versions are defined once in the root `build.gradle`.
 - To ship a platform: bump its `*_version` and merge. To ship several, bump
   several. No manual tagging.
 - The release matrix currently covers the buildable platforms (`paper`,
-  `neoforge`); add `fabric`/`forge` to it when their modules are re-enabled.
+  `neoforge`, `fabric`); add `forge` to it once its module is re-enabled.
 
 ## Building & verifying
 
@@ -186,23 +186,25 @@ unchanged for dashboard compatibility.
 
 ## Mod loader status (MC 26.x tooling)
 
-Paper + core build and ship today. The mod loaders are scaffolded
-(`mod/common` shared sources + a Fabric module) but **disabled in
-`settings.gradle`** pending upstream tooling for the new 26.x version scheme:
+Paper, NeoForge, and Fabric build and ship today. Only Forge is disabled in
+`settings.gradle`, pending upstream tooling for the new 26.x version scheme:
 
 - **Gson/Java 25 (solved):** Loom crashed on Java 25 because the old
   `foojay-resolver-convention 0.7.0` plugin dragged Gson 2.9.1 onto the plugin
   classpath, and Gson 2.9.1 cannot write `final` fields on JDK 18+ (the legacy
   reflection accessors were removed in JDK 23). Upgrading foojay to `1.0.0`
   resolves Gson to ≥2.13 and Loom runs fine on Java 25.
-- **Mappings (blocked upstream):** `loom.officialMojangMappings()` fails for any
-  26.x version — Mojang's 26.x manifests publish no `client_mappings`, and
-  Fabric intermediary/yarn top out at `1.21.11`. Until Fabric publishes 26.x
-  intermediary, Fabric Loom cannot deobfuscate 26.2.
+- **Fabric (working):** Minecraft 26.x ships **unobfuscated**, so Fabric stopped
+  maintaining intermediary/yarn from 26.1 onward and there is **nothing to map**.
+  The build must therefore: use the **`net.fabricmc.fabric-loom` `1.17-SNAPSHOT`**
+  plugin (the release `1.17.12` still requires a mappings dependency), declare
+  **no `mappings` line**, use plain `implementation` (not `modImplementation`,
+  since there is no remapping), and treat the **shaded jar as final** (there is
+  no `remapJar` task). `loom.officialMojangMappings()` is wrong here — it tries
+  to download proguard mappings that no longer exist.
 - **NeoForge (working):** builds via NeoForge's **ModDevGradle**
   (`net.neoforged.moddev`), which has its own mapping pipeline and doesn't
-  depend on Fabric intermediary or piston-meta mappings. This is the one loader
-  green today.
+  depend on Fabric intermediary or piston-meta mappings.
 - **Forge (blocked upstream):** Forge 26.x dropped SRG and runs Mojang-mapped
   like NeoForge, but ModDevGradle's legacy-forge variant
   (`net.neoforged.moddev.legacyforge` 2.0.141) still expects an SRG

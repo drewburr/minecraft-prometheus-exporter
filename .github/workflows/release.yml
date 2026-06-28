@@ -35,6 +35,11 @@ jobs:
             version_file: mod/neoforge/gradle.properties
             version_prop: neoforge_version
             libdir: mod/neoforge/build/libs
+          - platform: fabric
+            module: ':mod:fabric'
+            version_file: mod/fabric/gradle.properties
+            version_prop: fabric_version
+            libdir: mod/fabric/build/libs
     steps:
       - uses: actions/checkout@v4
 
