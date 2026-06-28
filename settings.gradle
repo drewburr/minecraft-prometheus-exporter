@@ -31,6 +31,6 @@ include 'paper'
 //  - Fabric: no 26.x intermediary/yarn or Mojang mappings published yet.
 //  - Forge:  Forge 26.x dropped SRG (Mojmap runtime), but ModDevGradle's
 //            legacy-forge variant still expects SRG (intermediaryToNamedMapping).
-// include 'mod:fabric'
+include 'mod:fabric'
 // include 'mod:forge'
 include 'mod:neoforge'

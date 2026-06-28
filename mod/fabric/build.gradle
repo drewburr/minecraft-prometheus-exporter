@@ -3,7 +3,9 @@
 // relocated Prometheus client into the remapped jar.
 
 plugins {
-	id 'fabric-loom' version '1.17.12'
+	// 1.17-SNAPSHOT (not the 1.17.12 release) supports unobfuscated Minecraft
+	// (26.x) with no mappings dependency. Use the full plugin id.
+	id 'net.fabricmc.fabric-loom' version '1.17-SNAPSHOT'
 	id 'com.gradleup.shadow' version '9.0.0'
 }
 
@@ -34,9 +36,11 @@ configurations {
 
 dependencies {
 	minecraft "com.mojang:minecraft:${minecraft_version}"
-	mappings loom.officialMojangMappings()
-	modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
-	modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+	// Minecraft 26.x ships unobfuscated with parameter names, so no mappings are
+	// needed (Fabric stopped maintaining intermediary/yarn from 26.1 onward), and
+	// mod deps use plain implementation since there is no remapping step.
+	implementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
 
 	// core is needed to compile; its classes are bundled via `from(...)` below.
 	compileOnly project(':core')
@@ -54,15 +58,15 @@ tasks.named('processResources') {
 	}
 }
 
+// Minecraft 26.x is unobfuscated, so Loom performs no remap step (no remapJar
+// task). The shaded jar is the final artifact, like the NeoForge module.
 tasks.named('shadowJar') {
+	archiveClassifier = ''
 	configurations = [project.configurations.shadowBundle]
 	from project(':core').sourceSets.main.output
 	relocate 'io.prometheus', "${relocateBase}.io.prometheus"
-	archiveClassifier = 'dev-shadow'
 }
 
-tasks.named('remapJar') {
+tasks.named('build') {
 	dependsOn tasks.named('shadowJar')
-	inputFile = tasks.named('shadowJar').flatMap { it.archiveFile }
-	archiveClassifier = ''
 }
