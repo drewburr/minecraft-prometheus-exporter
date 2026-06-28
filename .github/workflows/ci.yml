@@ -1,6 +1,5 @@
-# Build verification for the modules that build today (Paper + NeoForge +
-# Fabric) plus the platform-agnostic core's unit tests. Forge is disabled in
-# settings.gradle pending upstream 26.x tooling (see DEVELOPMENT.md).
+# Build verification for all four platform modules (Paper, NeoForge, Fabric,
+# Forge) plus the platform-agnostic core's unit tests.
 name: ci
 
 on:
@@ -31,3 +30,6 @@ jobs:
 
       - name: Build Fabric
         run: ./gradlew :mod:fabric:build --no-daemon
+
+      - name: Build Forge
+        run: ./gradlew :mod:forge:build --no-daemon

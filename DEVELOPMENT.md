@@ -153,8 +153,8 @@ dependency versions are defined once in the root `build.gradle`.
   released versions are skipped, so unrelated pushes are no-ops.
 - To ship a platform: bump its `*_version` and merge. To ship several, bump
   several. No manual tagging.
-- The release matrix currently covers the buildable platforms (`paper`,
-  `neoforge`, `fabric`); add `forge` to it once its module is re-enabled.
+- The release matrix covers all four platforms (`paper`, `neoforge`, `fabric`,
+  `forge`).
 
 ## Building & verifying
 
@@ -186,8 +186,8 @@ unchanged for dashboard compatibility.
 
 ## Mod loader status (MC 26.x tooling)
 
-Paper, NeoForge, and Fabric build and ship today. Only Forge is disabled in
-`settings.gradle`, pending upstream tooling for the new 26.x version scheme:
+All four platforms — Paper, NeoForge, Fabric, and Forge — build and ship today.
+The 26.x toolchain notes per loader:
 
 - **Gson/Java 25 (solved):** Loom crashed on Java 25 because the old
   `foojay-resolver-convention 0.7.0` plugin dragged Gson 2.9.1 onto the plugin
@@ -205,11 +205,14 @@ Paper, NeoForge, and Fabric build and ship today. Only Forge is disabled in
 - **NeoForge (working):** builds via NeoForge's **ModDevGradle**
   (`net.neoforged.moddev`), which has its own mapping pipeline and doesn't
   depend on Fabric intermediary or piston-meta mappings.
-- **Forge (blocked upstream):** Forge 26.x dropped SRG and runs Mojang-mapped
-  like NeoForge, but ModDevGradle's legacy-forge variant
-  (`net.neoforged.moddev.legacyforge` 2.0.141) still expects an SRG
-  `intermediaryToNamedMapping` result and fails on 26.x. The module is
-  scaffolded and re-enables once MDG supports SRG-less Forge.
+- **Forge (working):** builds with **ForgeGradle 7** (`net.minecraftforge.gradle`
+  `[7.0.17,8)`) — the canonical Forge 26.x tool, **not** ModDevGradle's
+  legacy-forge variant (which expects SRG mappings that 26.x dropped). Like
+  Fabric: no mappings, no reobf, shaded jar is final. Requires the `java` plugin,
+  the `minecraft.dependency('net.minecraftforge:forge:<mc>-<forge>')` DSL, and
+  the `eventbus-validator` annotation processor. The entrypoint uses the
+  eventbus 7 model: `SubscribeEvent` moved to `…eventbus.api.listener`, and tick
+  events are `Pre`/`Post` records registered via `EventType.BUS.addListener(...)`.
 - **JDK requirement:** NeoForm recompiles Minecraft, so a full **JDK 25 with
   `javac`** must be available to the toolchain (a JRE is not enough).
 

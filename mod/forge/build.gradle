@@ -1,10 +1,10 @@
-// Forge loader module, built with ModDevGradle's legacy-forge variant. Like
-// modern NeoForge, Forge 26.x runs with Mojang names at runtime, so the
-// compiled jar needs no reobfuscation; Shadow bundles core + the relocated
-// Prometheus client directly.
+// Forge loader module, built with ForgeGradle 7 (the canonical Forge 26.x tool).
+// Minecraft 26.x is unobfuscated, so there are no mappings and no reobf step —
+// the shaded jar is the final artifact, like the NeoForge/Fabric modules.
 
 plugins {
-	id 'net.neoforged.moddev.legacyforge' version '2.0.141'
+	id 'java'
+	id 'net.minecraftforge.gradle' version '[7.0.17,8)'
 	id 'com.gradleup.shadow' version '9.0.0'
 }
 
@@ -21,11 +21,10 @@ tasks.named('jar') {
 }
 
 repositories {
+	minecraft.mavenizer(it)
+	maven fg.forgeMaven
+	maven fg.minecraftLibsMaven
 	mavenCentral()
-}
-
-legacyForge {
-	version = forge_platform_version
 }
 
 // Compile the shared Mojang-mapped mod sources alongside this loader's sources.
@@ -36,6 +35,9 @@ configurations {
 }
 
 dependencies {
+	implementation minecraft.dependency("net.minecraftforge:forge:${forge_platform_version}")
+	annotationProcessor "net.minecraftforge:eventbus-validator:${eventbus_validator_version}"
+
 	// core is needed to compile; its classes are bundled via `from(...)` below.
 	compileOnly project(':core')
 
