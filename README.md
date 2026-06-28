@@ -23,11 +23,10 @@ Targeting **Minecraft 26.2** (Java 25).
 | Paper | Bukkit plugin | ✅ Available |
 | NeoForge | Mod | ✅ Available |
 | Fabric | Mod | ✅ Available |
-| Forge | Mod | ⏳ Pending ModDevGradle support for SRG-less 26.x Forge |
+| Forge | Mod | ✅ Available |
 
-Forge is fully implemented but disabled in the build until ModDevGradle's
-legacy-forge support catches up to Minecraft's 26.x scheme. See [DEVELOPMENT.md]
-for details.
+All four platforms build against Minecraft 26.2. See [DEVELOPMENT.md] for the
+per-loader toolchain details.
 
 ## Installation
 

@@ -40,6 +40,11 @@ jobs:
             version_file: mod/fabric/gradle.properties
             version_prop: fabric_version
             libdir: mod/fabric/build/libs
+          - platform: forge
+            module: ':mod:forge'
+            version_file: mod/forge/gradle.properties
+            version_prop: forge_version
+            libdir: mod/forge/build/libs
     steps:
       - uses: actions/checkout@v4
 
